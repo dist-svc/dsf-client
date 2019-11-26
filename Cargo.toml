@@ -1,0 +1,38 @@
+[package]
+authors = ["ryan <ryan@kurte.nz>"]
+edition = "2018"
+name = "dsf-client"
+version = "0.1.0"
+
+[dependencies]
+futures = "*"
+async-std = "*"
+actix = "*"
+tokio = "*"
+tokio-codec = "*"
+tokio-uds = "*"
+colored = "*"
+serde_json = "*"
+
+
+[dependencies.dsf-core]
+path = "../dsf-core"
+features = [ "serde" ]
+
+[dependencies.dsf-rpc]
+path = "../dsf-rpc"
+
+[dependencies.daemon-engine]
+git = "https://github.com/ryankurte/rust-daemon"
+
+[dependencies.log]
+features = ["max_level_trace", "release_max_level_info"]
+version = "0.4.6"
+
+[dependencies.serde]
+features = ["derive"]
+version = "1.0"
+
+[dependencies.chrono]
+features = ["serde"]
+version = "0.4.6"
