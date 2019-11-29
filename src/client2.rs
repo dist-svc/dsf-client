@@ -8,15 +8,20 @@ use futures::{StreamExt, SinkExt};
 use futures::channel::mpsc;
 use futures_codec::{Framed, JsonCodec};
 
+use async_std::prelude::*;
 use async_std::future::timeout;
 use async_std::os::unix::net::UnixStream;
 use async_std::task;
 
-use tracing::{Level, event, span, instrument};
+use async_trait::async_trait;
 
-use dsf_rpc::{RequestKind, ResponseKind,
-        Request as RpcRequest, Response as RpcResponse};
+use tracing::{Level, span, instrument};
 
+use dsf_rpc::*;
+use dsf_rpc::{Request as RpcRequest, Response as RpcResponse};
+
+use dsf_core::prelude::*;
+use dsf_core::api::*;
 
 use crate::error::Error;
 
@@ -34,7 +39,7 @@ impl Client {
     /// Create a new client
     #[instrument]
     pub fn new(addr: &str, timeout: Duration) -> Result<Self, Error> {
-        event!(Level::INFO, "Client connecting (address: {})", addr);
+        info!("Client connecting (address: {})", addr);
 
         // Connect to stream
         let stream = StdUnixStream::connect(addr)?;
@@ -49,7 +54,7 @@ impl Client {
         // Create sending task
         let (internal_sink, mut internal_stream) = mpsc::channel::<RpcRequest>(0);
         task::spawn(async move {
-            event!(Level::DEBUG, "started client tx listener");
+            debug!("started client tx listener");
             while let Some(msg) = internal_stream.next().await {
                 unix_sink.send(msg).await.unwrap();
             }
@@ -60,7 +65,7 @@ impl Client {
         let requests = Arc::new(Mutex::new(HashMap::new()));
         let reqs = requests.clone();
         task::spawn(async move {
-            event!(Level::DEBUG, "started client rx listener");
+            debug!("started client rx listener");
             while let Some(Ok(resp)) = unix_stream.next().await {
                 Self::handle(&reqs, resp).await.unwrap();
             }
@@ -73,6 +78,11 @@ impl Client {
     /// Issue a request using a client instance
     // TODO: #[instrument] when futures 0.3 support is viable
     pub async fn request(&mut self, rk: RequestKind) -> Result<ResponseKind, Error> {
+        self.do_request(rk).await.map(|(v, _)| v )
+    }
+    
+    // TODO: #[instrument]
+    async fn do_request(&mut self, rk: RequestKind) -> Result<(ResponseKind, impl Stream<Item=ResponseKind>), Error> {
         let (tx, mut rx) = mpsc::channel(0);
         let req = RpcRequest::new(rk);
         let id = req.req_id();
@@ -93,11 +103,11 @@ impl Client {
             Ok(Some(v)) => Ok(v),
             // TODO: this seems like it should be a yeild / retry point..?
             Ok(None) => {
-                event!(Level::ERROR, "No response received");
+                error!("No response received");
                 Err(Error::None(()))
             },
             Err(e) => {
-                event!(Level::ERROR, "Response error: {:?}", e);
+                error!("Response error: {:?}", e);
                 Err(Error::Timeout)
             },
         };
@@ -107,16 +117,17 @@ impl Client {
             self.requests.lock().unwrap().remove(&id);
         }
 
-        res
+        res.map(|v| (v, rx) )
     }
 
+    // Internal function to handle received messages
     async fn handle(requests: &RequestMap, resp: RpcResponse) -> Result<(), Error> {
         // Find matching sender
         let id = resp.req_id();
         let mut a = match requests.lock().unwrap().get_mut(&id) {
             Some(a) => a.clone(),
             None => {
-                event!(Level::ERROR, "Unix RX with no matching request ID");
+                error!("Unix RX with no matching request ID");
                 return Err(Error::Unknown)
             },
         };
@@ -125,10 +136,107 @@ impl Client {
         match a.send(resp.kind()).await {
             Ok(_) => (),
             Err(e) => {
-                event!(Level::ERROR, "client send error: {:?}", e);
+                error!("client send error: {:?}", e);
             }
         };
 
         Ok(())
+    }
+}
+
+#[async_trait]
+impl Create for Client {
+    type Options = ();
+    type Error = ();
+
+    /// Create a new service with the provided options
+    /// This MUST be stored locally for reuse
+    async fn create(_options: &Self::Options) -> Result<ServiceHandle, Self::Error> {
+        unimplemented!()
+    }
+}
+
+#[async_trait]
+impl Register for Client {
+    type Error = ();
+
+    /// Register a service instance in the distributed database
+    async fn register(&mut self, _service: &mut ServiceHandle) -> Result<(), Self::Error> {
+        unimplemented!()
+    }
+}
+
+#[async_trait]
+impl Locate for Client {
+    type Error = Error;
+
+    /// Locate a service instance in the distributed database
+    /// This returns a future that will resolve to the desired service or an error
+    async fn locate(&mut self, id: &Id) -> Result<ServiceHandle, Self::Error> {
+        let req = RequestKind::Service(dsf_rpc::service::ServiceCommands::locate(id.clone()));
+        let id = id.clone();
+
+        let resp = self.request(req).await?;
+
+        match resp {
+            ResponseKind::Located(_info) => Ok(ServiceHandle{id}),
+            _ => Err(Error::UnrecognizedResult),
+        }
+    }
+}
+
+#[async_trait]
+impl Publish for Client {
+    type Error = Error;
+
+    /// Publish data using an existing service
+    async fn publish(&mut self, s: &ServiceHandle, kind: Option<DataKind>, data: Option<&[u8]>) -> Result<(), Self::Error> {
+        let p = PublishOptions {
+            service: ServiceIdentifier::id(s.id),
+            kind: kind.map(|k| k.into() ),
+            data: data.map(|d| d.to_vec() ),
+            data_file: None,
+        };
+        let req = RequestKind::Data(DataCommands::Publish(p));
+        
+        let resp = self.request(req).await?;
+
+        match resp {
+            ResponseKind::Published(_info) => Ok(()),
+            _ => Err(Error::UnrecognizedResult),
+        }
+    }
+}
+
+
+pub struct SubscribeOptions{
+
+}
+
+impl Default for SubscribeOptions {
+    fn default() -> Self {
+        Self {}
+    }
+}
+
+#[async_trait]
+impl Subscribe for Client {
+    type Options = SubscribeOptions;
+    type Data = ResponseKind;
+    type Error = Error;
+
+    /// Subscribe to data from a given service
+    async fn subscribe(&mut self, service: &ServiceHandle, _options: Self::Options) -> Result<Box<dyn Stream<Item=Self::Data>>, Self::Error> {
+        
+        let req = RequestKind::Stream(dsf_rpc::StreamOptions{service: ServiceIdentifier::id(service.id)});
+        
+        let (resp, rx) = self.do_request(req).await?;
+
+        let rx: Box<dyn Stream<Item=Self::Data>> = Box::new(rx);
+
+        match resp {
+            ResponseKind::Subscribed(_info) => Ok(rx),
+            _ => Err(Error::UnrecognizedResult),
+        }
     }
 }

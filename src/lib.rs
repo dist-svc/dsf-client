@@ -5,6 +5,7 @@ extern crate futures;
 extern crate tokio;
 extern crate async_std;
 extern crate futures_codec;
+extern crate async_trait;
 
 extern crate colored;
 

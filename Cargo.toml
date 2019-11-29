@@ -17,6 +17,8 @@ serde_json = "*"
 tracing = "*"
 tracing-futures = "*"
 futures_codec = "0.3.1"
+async-trait = "0.1.19"
+
 
 [dependencies.dsf-core]
 path = "../dsf-core"
