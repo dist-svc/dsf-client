@@ -33,7 +33,7 @@ impl Client {
     }
 
     /// Pass-through for raw requests
-    pub fn request(&mut self, request: RequestKind) -> impl Future<Item=ResponseKind, Error=Error> {
+    pub fn request(&mut self, request: RequestKind) -> impl Future<Output=Result<ResponseKind, Error>> {
         let request = Request::new(request);
         let a = self.actor.clone();
 

@@ -3,6 +3,7 @@ authors = ["ryan <ryan@kurte.nz>"]
 edition = "2018"
 name = "dsf-client"
 version = "0.1.0"
+publish = false
 
 [dependencies]
 futures = "*"
@@ -13,7 +14,9 @@ tokio-codec = "*"
 tokio-uds = "*"
 colored = "*"
 serde_json = "*"
-
+tracing = "*"
+tracing-futures = "*"
+futures_codec = "0.3.1"
 
 [dependencies.dsf-core]
 path = "../dsf-core"
@@ -36,3 +39,6 @@ version = "1.0"
 [dependencies.chrono]
 features = ["serde"]
 version = "0.4.6"
+
+[patch.crates-io]
+futures_codec = { git = "https://github.com/ryankurte/futures-codec", branch = "feature/json-cbor-codecs" }

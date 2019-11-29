@@ -5,7 +5,7 @@ use std::time::Duration;
 use std::os::unix::net::UnixStream as StdUnixStream;
 
 use futures::{future, Stream, Sink, Future};
-use futures::sync::mpsc;
+use futures::channel::mpsc;
 
 use tokio::prelude::FutureExt;
 use tokio::reactor::Handle;

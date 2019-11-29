@@ -1,7 +1,7 @@
 
 use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 
-use tokio::timer::timeout::Error as TimeoutError;
+use async_std::future::TimeoutError;
 use serde_json::{Error as JsonError};
 use daemon_engine::{DaemonError};
 use dsf_core::types::Error as DsfError;
@@ -45,13 +45,9 @@ impl From<DsfError> for Error {
 }
 
 
-impl From<TimeoutError<Error>> for Error {
-    fn from(e: TimeoutError<Error>) -> Self {
-        if let Some(e) = e.into_inner() {
-            e
-        } else {
-            Error::Timeout
-        }
+impl From<TimeoutError> for Error {
+    fn from(_e: TimeoutError) -> Self {
+        Error::Timeout
     }
 }
 
