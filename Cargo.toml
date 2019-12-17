@@ -1,14 +1,16 @@
 [package]
-authors = ["ryan <ryan@kurte.nz>"]
-edition = "2018"
 name = "dsf-client"
+description = "DSF client library and CLI"
+repository = "https://github.com/dist-svc/dsf-client"
+keywords = ["DSF"]
+authors = ["ryan <ryan@kurte.nz>"]
+license = "MPL-2.0"
+edition = "2018"
 version = "0.1.0"
-publish = false
 
 [features]
 cli = [ "structopt", "simplelog", "humantime" ]
 default = [ "cli" ]
-
 
 [dependencies]
 futures = "0.3.1"
@@ -18,7 +20,6 @@ tracing = "0.1.10"
 tracing-futures = "0.2.0"
 futures_codec = "0.3.4"
 async-trait = "0.1.21"
-
 
 [dependencies.dsf-core]
 version = "0.1.0"
