@@ -2,16 +2,14 @@
 use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 
 use async_std::future::TimeoutError;
-use serde_json::{Error as JsonError};
-use daemon_engine::{DaemonError};
 use dsf_core::types::Error as DsfError;
 
+use futures_codec::JsonCodecError as CodecError;
 
 #[derive(Debug)]
 pub enum Error {
     Io(IoErrorKind),
-    Json(JsonError),
-    Daemon(DaemonError),
+    Codec(CodecError),
     Remote(DsfError),
     None(()),
     UnrecognizedResult,
@@ -26,15 +24,9 @@ impl From<IoError> for Error {
     }
 }
 
-impl From<JsonError> for Error {
-    fn from(e: JsonError) -> Self {
-        Error::Json(e)
-    }
-}
-
-impl From<DaemonError> for Error {
-    fn from(e: DaemonError) -> Self {
-        Error::Daemon(e)
+impl From<CodecError> for Error {
+    fn from(e: CodecError) -> Self {
+        Error::Codec(e)
     }
 }
 
