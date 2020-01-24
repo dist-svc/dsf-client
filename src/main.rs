@@ -31,7 +31,7 @@ struct Config {
     #[structopt(subcommand)]
     cmd: RequestKind,
 
-    #[structopt(short = "d", long = "daemon-socket", default_value = "/tmp/dsf.sock")]
+    #[structopt(short = "d", long = "daemon-socket", default_value = "/tmp/dsf.sock", env="DSF_SOCK")]
     /// Specify the socket to bind the DSF daemon
     daemon_socket: String,
 

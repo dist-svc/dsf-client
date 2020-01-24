@@ -4,7 +4,7 @@ extern crate futures;
 extern crate async_std;
 extern crate futures_codec;
 extern crate async_trait;
-
+extern crate serde_json;
 extern crate colored;
 
 #[macro_use]

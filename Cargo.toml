@@ -20,6 +20,8 @@ tracing = "0.1.10"
 tracing-futures = "0.2.0"
 futures_codec = "0.3.4"
 async-trait = "0.1.21"
+serde_json = "1.0.44"
+
 
 [dependencies.dsf-core]
 version = "0.1.0"

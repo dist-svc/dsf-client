@@ -16,6 +16,7 @@ use async_std::task;
 use async_trait::async_trait;
 
 use tracing::{Level, span, instrument};
+use tracing_futures::Instrument;
 
 use dsf_rpc::*;
 use dsf_rpc::{Request as RpcRequest, Response as RpcResponse};
@@ -29,6 +30,7 @@ type RequestMap = Arc<Mutex<HashMap<u64, mpsc::Sender<ResponseKind>>>>;
 
 #[derive(Debug, Clone)]
 pub struct Client {
+    addr: String,
     sink: mpsc::Sender<RpcRequest>,
     requests: RequestMap,
 
@@ -37,8 +39,10 @@ pub struct Client {
 
 impl Client {
     /// Create a new client
-    #[instrument]
     pub fn new(addr: &str, timeout: Duration) -> Result<Self, Error> {
+        let span = span!(Level::DEBUG, "client", "{}", addr);
+        let _enter = span.enter();
+
         info!("Client connecting (address: {})", addr);
 
         // Connect to stream
@@ -50,11 +54,10 @@ impl Client {
         let framed = Framed::new(stream, codec);
         let (mut unix_sink, mut unix_stream) = framed.split();
 
-
         // Create sending task
         let (internal_sink, mut internal_stream) = mpsc::channel::<RpcRequest>(0);
         task::spawn(async move {
-            debug!("started client tx listener");
+            trace!("started client tx listener");
             while let Some(msg) = internal_stream.next().await {
                 unix_sink.send(msg).await.unwrap();
             }
@@ -65,29 +68,39 @@ impl Client {
         let requests = Arc::new(Mutex::new(HashMap::new()));
         let reqs = requests.clone();
         task::spawn(async move {
-            debug!("started client rx listener");
+            trace!("started client rx listener");
             while let Some(Ok(resp)) = unix_stream.next().await {
                 Self::handle(&reqs, resp).await.unwrap();
             }
             ()
         });
 
-        Ok(Client{ sink: internal_sink, requests, timeout })
+        Ok(Client{ sink: internal_sink, addr: addr.to_owned(), requests, timeout })
     }
 
     /// Issue a request using a client instance
     // TODO: #[instrument] when futures 0.3 support is viable
     pub async fn request(&mut self, rk: RequestKind) -> Result<ResponseKind, Error> {
-        self.do_request(rk).await.map(|(v, _)| v )
+        let span = span!(Level::DEBUG, "client", "{}", self.addr);
+        let _enter = span.enter();
+
+        debug!("Issuing request: {:?}", rk);
+
+        let resp = self.do_request(rk).await.map(|(v, _)| v )?;
+
+        debug!("Received response: {:?}", resp);
+
+        Ok(resp)
     }
     
     // TODO: #[instrument]
     async fn do_request(&mut self, rk: RequestKind) -> Result<(ResponseKind, impl Stream<Item=ResponseKind>), Error> {
+        let span = span!(Level::DEBUG, "client", "{}", self.addr);
+        let _enter = span.enter();
+        
         let (tx, mut rx) = mpsc::channel(0);
         let req = RpcRequest::new(rk);
         let id = req.req_id();
-        
-        span!(Level::DEBUG, "Issuing request", ?req);
 
         // Add to tracking
         self.requests.lock().unwrap().insert(id, tx);
@@ -142,16 +155,44 @@ impl Client {
 
         Ok(())
     }
+
+    /// Fetch daemon status information
+    pub async fn status(&mut self) -> Result<dsf_rpc::StatusInfo, Error> {
+        let span = span!(Level::DEBUG, "client", "{}", self.addr);
+        let _enter = span.enter();
+
+        let req = RequestKind::Status;
+        let resp = self.request(req).await?;
+
+        match resp {
+            ResponseKind::Status(info) => Ok(info),
+            _ => Err(Error::UnrecognizedResult),
+        }
+    }
+
+    /// Connect to another DSF instance
+    pub async fn connect(&mut self, o: dsf_rpc::peer::ConnectOptions) -> Result<dsf_rpc::peer::ConnectInfo, Error> {
+        let span = span!(Level::DEBUG, "client", "{}", self.addr);
+        let _enter = span.enter();
+
+        let req = RequestKind::Peer(dsf_rpc::peer::PeerCommands::Connect(o));
+        let resp = self.request(req).await?;
+
+        match resp {
+            ResponseKind::Connected(info) => Ok(info),
+            _ => Err(Error::UnrecognizedResult),
+        }
+    }
 }
 
 #[async_trait]
 impl Create for Client {
-    type Options = ();
+    type Options = dsf_rpc::service::CreateOptions;
     type Error = ();
 
     /// Create a new service with the provided options
     /// This MUST be stored locally for reuse
-    async fn create(_options: &Self::Options) -> Result<ServiceHandle, Self::Error> {
+    async fn create(&mut self, _options: &Self::Options) -> Result<ServiceHandle, Self::Error> {
         unimplemented!()
     }
 }
