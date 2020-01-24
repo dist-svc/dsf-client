@@ -15,8 +15,7 @@ use async_std::task;
 
 use async_trait::async_trait;
 
-use tracing::{Level, span, instrument};
-use tracing_futures::Instrument;
+use tracing::{Level, span};
 
 use dsf_rpc::*;
 use dsf_rpc::{Request as RpcRequest, Response as RpcResponse};
@@ -95,9 +94,7 @@ impl Client {
     
     // TODO: #[instrument]
     async fn do_request(&mut self, rk: RequestKind) -> Result<(ResponseKind, impl Stream<Item=ResponseKind>), Error> {
-        let span = span!(Level::DEBUG, "client", "{}", self.addr);
-        let _enter = span.enter();
-        
+
         let (tx, mut rx) = mpsc::channel(0);
         let req = RpcRequest::new(rk);
         let id = req.req_id();
@@ -158,9 +155,6 @@ impl Client {
 
     /// Fetch daemon status information
     pub async fn status(&mut self) -> Result<dsf_rpc::StatusInfo, Error> {
-        let span = span!(Level::DEBUG, "client", "{}", self.addr);
-        let _enter = span.enter();
-
         let req = RequestKind::Status;
         let resp = self.request(req).await?;
 
@@ -172,9 +166,6 @@ impl Client {
 
     /// Connect to another DSF instance
     pub async fn connect(&mut self, o: dsf_rpc::peer::ConnectOptions) -> Result<dsf_rpc::peer::ConnectInfo, Error> {
-        let span = span!(Level::DEBUG, "client", "{}", self.addr);
-        let _enter = span.enter();
-
         let req = RequestKind::Peer(dsf_rpc::peer::PeerCommands::Connect(o));
         let resp = self.request(req).await?;
 
