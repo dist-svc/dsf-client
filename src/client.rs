@@ -165,12 +165,23 @@ impl Client {
     }
 
     /// Connect to another DSF instance
-    pub async fn connect(&mut self, o: dsf_rpc::peer::ConnectOptions) -> Result<dsf_rpc::peer::ConnectInfo, Error> {
-        let req = RequestKind::Peer(dsf_rpc::peer::PeerCommands::Connect(o));
+    pub async fn connect(&mut self, options: dsf_rpc::peer::ConnectOptions) -> Result<dsf_rpc::peer::ConnectInfo, Error> {
+        let req = RequestKind::Peer(dsf_rpc::peer::PeerCommands::Connect(options));
         let resp = self.request(req).await?;
 
         match resp {
             ResponseKind::Connected(info) => Ok(info),
+            _ => Err(Error::UnrecognizedResult),
+        }
+    }
+
+    /// Search for a peer using the database
+    pub async fn find(&mut self, options: dsf_rpc::peer::SearchOptions) -> Result<dsf_rpc::peer::PeerInfo, Error> {
+        let req = RequestKind::Peer(dsf_rpc::peer::PeerCommands::Search(options));
+        let resp = self.request(req).await?;
+
+        match resp {
+            ResponseKind::Peers(info) => Ok(info[0].1.clone()),
             _ => Err(Error::UnrecognizedResult),
         }
     }
@@ -179,12 +190,18 @@ impl Client {
 #[async_trait]
 impl Create for Client {
     type Options = dsf_rpc::service::CreateOptions;
-    type Error = ();
+    type Error = Error;
 
     /// Create a new service with the provided options
     /// This MUST be stored locally for reuse
-    async fn create(&mut self, _options: &Self::Options) -> Result<ServiceHandle, Self::Error> {
-        unimplemented!()
+    async fn create(&mut self, options: dsf_rpc::service::CreateOptions) -> Result<ServiceHandle, Self::Error> {
+        let req = RequestKind::Service(dsf_rpc::service::ServiceCommands::Create(options));
+        let resp = self.request(req).await?;
+
+        match resp {
+            ResponseKind::Created(info) => Ok(ServiceHandle::new(info.id.clone())),
+            _ => Err(Error::UnrecognizedResult),
+        }
     }
 }
 
