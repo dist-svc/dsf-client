@@ -10,7 +10,7 @@ use futures_codec::{Framed, JsonCodec};
 
 use async_std::future::timeout;
 use async_std::os::unix::net::UnixStream;
-use async_std::task;
+use async_std::task::{self, JoinHandle};
 
 use async_trait::async_trait;
 
@@ -25,13 +25,16 @@ use crate::error::Error;
 
 type RequestMap = Arc<Mutex<HashMap<u64, mpsc::Sender<ResponseKind>>>>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Client {
     addr: String,
     sink: mpsc::Sender<RpcRequest>,
     requests: RequestMap,
 
     timeout: Duration,
+
+    tx_handle: JoinHandle<()>,
+    rx_handle: JoinHandle<()>,
 }
 
 impl Client {
@@ -53,7 +56,7 @@ impl Client {
 
         // Create sending task
         let (internal_sink, mut internal_stream) = mpsc::channel::<RpcRequest>(0);
-        task::spawn(async move {
+        let tx_handle = task::spawn(async move {
             trace!("started client tx listener");
             while let Some(msg) = internal_stream.next().await {
                 unix_sink.send(msg).await.unwrap();
@@ -64,7 +67,7 @@ impl Client {
         // Create receiving task
         let requests = Arc::new(Mutex::new(HashMap::new()));
         let reqs = requests.clone();
-        task::spawn(async move {
+        let rx_handle = task::spawn(async move {
             trace!("started client rx listener");
             while let Some(Ok(resp)) = unix_stream.next().await {
                 Self::handle(&reqs, resp).await.unwrap();
@@ -72,7 +75,7 @@ impl Client {
             ()
         });
 
-        Ok(Client{ sink: internal_sink, addr: addr.to_owned(), requests, timeout })
+        Ok(Client{ sink: internal_sink, addr: addr.to_owned(), requests, timeout, rx_handle, tx_handle })
     }
 
     /// Issue a request using a client instance
