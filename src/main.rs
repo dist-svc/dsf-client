@@ -24,6 +24,13 @@ use dsf_rpc::{RequestKind, ResponseKind};
 extern crate humantime;
 use humantime::Duration;
 
+extern crate chrono;
+extern crate chrono_humanize;
+
+#[macro_use] extern crate prettytable;
+use prettytable::{Table};
+
+
 #[derive(StructOpt)]
 #[structopt(name = "DSF Client", about = "Distributed Service Discovery (DSF) client, interacts with the DSF daemon to publish and locate services")]
 struct Config {
@@ -95,10 +102,7 @@ fn handle_response(resp: ResponseKind) {
             }
         },
         ResponseKind::Peers(peers) => {
-            println!("Peers:");
-            for (_id, p) in &peers {
-                println!("{:+}", p);
-            }
+            print_peers(&peers);
         },
         ResponseKind::Data(data) => {
             println!("Data:");
@@ -110,4 +114,39 @@ fn handle_response(resp: ResponseKind) {
         ResponseKind::Unrecognised => warn!("command not yet implemented"),
         _ => warn!("unhandled response: {:?}", resp),
     }
+}
+
+use dsf_core::types::Id;
+use dsf_rpc::PeerInfo;
+
+use std::time::SystemTime;
+
+fn systemtime_to_humantime(s: SystemTime) -> String {
+    let v = chrono::DateTime::<chrono::Local>::from(s);
+    chrono_humanize::HumanTime::from(v).to_string()
+}
+
+fn print_peers(peers: &[(Id, PeerInfo)]) {
+    // Create the table
+    let mut table = Table::new();
+
+    table.set_format(*prettytable::format::consts::FORMAT_CLEAN);
+
+    // Add a row per time
+    table.add_row(row![b => "Peer ID", "State", "Address(es)", "Seen", "Sent", "Received", "Blocked"]);
+    
+    for (_id, p) in peers {
+        table.add_row(row![
+            p.id.to_string(),
+            p.state.to_string(),
+            format!("{}", p.address()),
+            p.seen.map(systemtime_to_humantime).unwrap_or( "Never".to_string() ),
+            format!("{}", p.sent),
+            format!("{}", p.received),
+            format!("{}", p.blocked),
+        ]);
+    }
+
+    // Print the table to stdout
+    table.printstd();
 }

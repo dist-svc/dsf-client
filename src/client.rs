@@ -101,6 +101,7 @@ impl Client {
         let id = req.req_id();
 
         // Add to tracking
+        trace!("request add lock");
         self.requests.lock().unwrap().insert(id, tx);
 
         // Send message
@@ -125,6 +126,7 @@ impl Client {
 
         // Remove request on failure
         if let Err(_e) = &res {
+            trace!("request failure lock");
             self.requests.lock().unwrap().remove(&id);
         }
 
@@ -135,6 +137,7 @@ impl Client {
     async fn handle(requests: &RequestMap, resp: RpcResponse) -> Result<(), Error> {
         // Find matching sender
         let id = resp.req_id();
+        trace!("receive request lock");
         let mut a = match requests.lock().unwrap().get_mut(&id) {
             Some(a) => a.clone(),
             None => {
