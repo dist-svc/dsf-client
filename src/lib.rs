@@ -11,11 +11,14 @@ extern crate colored;
 extern crate tracing;
 extern crate tracing_futures;
 
-extern crate dsf_core;
-extern crate dsf_rpc;
+pub extern crate dsf_core;
+pub extern crate dsf_rpc;
+
 
 pub mod client;
 pub use client::Client;
 
 pub mod error;
 pub use error::Error;
+
+pub mod prelude;

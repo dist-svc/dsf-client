@@ -13,7 +13,7 @@ use async_std::future::timeout;
 use async_std::os::unix::net::UnixStream;
 use async_std::task;
 
-use async_trait::async_trait;
+//use async_trait::async_trait;
 
 use tracing::{Level, span};
 
@@ -187,14 +187,14 @@ impl Client {
     }
 }
 
-#[async_trait]
-impl Create for Client {
-    type Options = dsf_rpc::service::CreateOptions;
-    type Error = Error;
+//#[async_trait]
+impl Client {
+    //type Options = dsf_rpc::service::CreateOptions;
+    //type Error = Error;
 
     /// Create a new service with the provided options
     /// This MUST be stored locally for reuse
-    async fn create(&mut self, options: dsf_rpc::service::CreateOptions) -> Result<ServiceHandle, Self::Error> {
+    pub async fn create(&mut self, options: dsf_rpc::service::CreateOptions) -> Result<ServiceHandle, Error> {
         let req = RequestKind::Service(dsf_rpc::service::ServiceCommands::Create(options));
         let resp = self.request(req).await?;
 
@@ -205,23 +205,23 @@ impl Create for Client {
     }
 }
 
-#[async_trait]
-impl Register for Client {
-    type Error = ();
+//#[async_trait]
+impl Client {
+    //type Error = ();
 
     /// Register a service instance in the distributed database
-    async fn register(&mut self, _service: &mut ServiceHandle) -> Result<(), Self::Error> {
+    pub async fn register(&mut self, _service: &mut ServiceHandle) -> Result<(), Error> {
         unimplemented!()
     }
 }
 
-#[async_trait]
-impl Locate for Client {
-    type Error = Error;
+//#[async_trait]
+impl Client {
+    //type Error = Error;
 
     /// Locate a service instance in the distributed database
     /// This returns a future that will resolve to the desired service or an error
-    async fn locate(&mut self, id: &Id) -> Result<ServiceHandle, Self::Error> {
+    pub async fn locate(&mut self, id: &Id) -> Result<ServiceHandle, Error> {
         let req = RequestKind::Service(dsf_rpc::service::ServiceCommands::locate(id.clone()));
         let id = id.clone();
 
@@ -234,12 +234,12 @@ impl Locate for Client {
     }
 }
 
-#[async_trait]
-impl Publish for Client {
-    type Error = Error;
+//#[async_trait]
+impl Client {
+    //type Error = Error;
 
     /// Publish data using an existing service
-    async fn publish(&mut self, s: &ServiceHandle, kind: Option<DataKind>, data: Option<&[u8]>) -> Result<(), Self::Error> {
+    pub async fn publish(&mut self, s: &ServiceHandle, kind: Option<DataKind>, data: Option<&[u8]>) -> Result<(), Error> {
         let p = PublishOptions {
             service: ServiceIdentifier::id(s.id),
             kind: kind.map(|k| k.into() ),
@@ -257,31 +257,20 @@ impl Publish for Client {
     }
 }
 
-
-pub struct SubscribeOptions{
-
-}
-
-impl Default for SubscribeOptions {
-    fn default() -> Self {
-        Self {}
-    }
-}
-
-#[async_trait]
-impl Subscribe for Client {
-    type Options = SubscribeOptions;
-    type Data = ResponseKind;
-    type Error = Error;
+//#[async_trait]
+impl Client {
+    //type Options = SubscribeOptions;
+    //type Data = ResponseKind;
+    //type Error = Error;
 
     /// Subscribe to data from a given service
-    async fn subscribe(&mut self, service: &ServiceHandle, _options: Self::Options) -> Result<Box<dyn Stream<Item=Self::Data>>, Self::Error> {
+    pub async fn subscribe(&mut self, service: &ServiceHandle, _options: ()) -> Result<impl Stream<Item=ResponseKind>, Error> {
         
         let req = RequestKind::Stream(dsf_rpc::StreamOptions{service: ServiceIdentifier::id(service.id)});
         
         let (resp, rx) = self.do_request(req).await?;
 
-        let rx: Box<dyn Stream<Item=Self::Data>> = Box::new(rx);
+        //let rx: Box<dyn Stream<Item=ResponseKind>> = Box::new(rx);
 
         match resp {
             ResponseKind::Subscribed(_info) => Ok(rx),
