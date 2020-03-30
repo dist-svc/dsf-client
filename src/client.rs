@@ -194,7 +194,7 @@ impl Client {
     }
 
     /// Search for a peer using the database
-    pub async fn list(&mut self, options: ListOptions) -> Result<Vec<service::ServiceInfo>, Error> {
+    pub async fn list(&mut self, options: service::ListOptions) -> Result<Vec<service::ServiceInfo>, Error> {
         let req = RequestKind::Service(service::ServiceCommands::List(options));
         let resp = self.request(req).await?;
 
@@ -228,10 +228,10 @@ impl Client {
     //type Error = ();
 
     /// Register a service instance in the distributed database
-    pub async fn register(&mut self, service: &mut ServiceHandle) -> Result<dsf_rpc::service::RegisterInfo, Error> {
-        let options = dsf_rpc::service::RegisterOptions{
+    pub async fn register(&mut self, service: &ServiceHandle, options: RegisterOptions) -> Result<dsf_rpc::service::RegisterInfo, Error> {
+        let options = dsf_rpc::service::RegisterCommand {
             service: ServiceIdentifier::id(service.id),
-            no_replica: false,
+            options,
         };
         let req = RequestKind::Service(dsf_rpc::service::ServiceCommands::Register(options));
         let resp = self.request(req).await?;
@@ -250,7 +250,8 @@ impl Client {
     /// Locate a service instance in the distributed database
     /// This returns a future that will resolve to the desired service or an error
     pub async fn locate(&mut self, id: &Id) -> Result<(ServiceHandle, LocateInfo), Error> {
-        let req = RequestKind::Service(dsf_rpc::service::ServiceCommands::locate(id.clone()));
+        let options = LocateOptions{ id: id.clone() };
+        let req = RequestKind::Service(dsf_rpc::service::ServiceCommands::Search(options));
         let id = id.clone();
 
         let resp = self.request(req).await?;
@@ -275,7 +276,7 @@ impl Client {
             service: ServiceIdentifier::id(s.id),
             kind: kind.map(|k| k.into() ),
             data: data.map(|d| d.to_vec() ),
-            data_file: None,
+            //data_file: None,
         };
         let req = RequestKind::Data(DataCommands::Publish(p));
         
@@ -295,10 +296,11 @@ impl Client {
     //type Error = Error;
 
     /// Subscribe to data from a given service
-    pub async fn subscribe(&mut self, service: &ServiceHandle, _options: ()) -> Result<impl Stream<Item=ResponseKind>, Error> {
+    pub async fn subscribe(&mut self, service: &ServiceHandle, options: SubscribeOptions)-> Result<impl Stream<Item=ResponseKind>, Error> {
         
-        let req = RequestKind::Stream(dsf_rpc::StreamOptions{
+        let req = RequestKind::Stream(dsf_rpc::StreamCommand{
             service: ServiceIdentifier::id(service.id),
+            options,
         });
         
         let (resp, rx) = self.do_request(req).await?;

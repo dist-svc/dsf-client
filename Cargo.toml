@@ -74,3 +74,4 @@ optional = true
 name = "dsfc"
 path = "src/main.rs"
 required-features = [ "cli" ]
+

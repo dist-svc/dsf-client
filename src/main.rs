@@ -3,6 +3,7 @@ use std::io;
 
 extern crate structopt;
 use structopt::StructOpt;
+use structopt::clap::Shell;
 
 extern crate futures;
 
@@ -36,7 +37,7 @@ use prettytable::{Table};
 struct Config {
 
     #[structopt(subcommand)]
-    cmd: RequestKind,
+    cmd: Commands,
 
     #[structopt(short = "d", long = "daemon-socket", default_value = "/tmp/dsf.sock", env="DSF_SOCK")]
     /// Specify the socket to bind the DSF daemon
@@ -50,6 +51,23 @@ struct Config {
     timeout: Duration,
 }
 
+#[derive(StructOpt)]
+enum Commands {
+    #[structopt(flatten)]
+    Request(RequestKind),
+    
+    /// Generate shell completion information
+    Completion{
+        #[structopt(long, default_value = "zsh")]
+        /// Shell for completion file output
+        shell: Shell,
+
+        #[structopt(long, default_value = "./")]
+        /// Completion file output directory
+        dir: String,
+    },
+}
+
 fn main() -> Result<(), io::Error> {
     // Fetch arguments
     let opts = Config::from_args();
@@ -60,6 +78,16 @@ fn main() -> Result<(), io::Error> {
     let log_config = log_config.build();
 
     let _ = TermLogger::init(opts.level, log_config, simplelog::TerminalMode::Mixed).unwrap();
+
+    // Parse out commands
+    let cmd = match &opts.cmd {
+        Commands::Request(r) => r,
+        Commands::Completion{shell, dir} => {
+            info!("Writing completions for {} to: {}", *shell, dir);
+            Config::clap().gen_completions("dsfc", *shell, &dir);
+            return Ok(())
+        }
+    };
 
     task::block_on(async {
         // Create client connector
@@ -73,7 +101,7 @@ fn main() -> Result<(), io::Error> {
         };
 
         // Execute request and handle response
-        let res = c.request(opts.cmd).await;
+        let res = c.request(cmd.clone()).await;
 
         match res {
             Ok(resp) => {
@@ -92,14 +120,11 @@ fn main() -> Result<(), io::Error> {
 fn handle_response(resp: ResponseKind) {
     match resp {
         ResponseKind::Created(info) => {
-            println!("Created:");
-            println!("{:+}", info);
+            println!("Created service");
+            print_services(&[info]);
         },
         ResponseKind::Services(services) => {
-            println!("Services:");
-            for s in &services {
-                println!("{:+}", s);
-            }
+            print_services(&services);
         },
         ResponseKind::Peers(peers) => {
             print_peers(&peers);
@@ -117,7 +142,7 @@ fn handle_response(resp: ResponseKind) {
 }
 
 use dsf_core::types::Id;
-use dsf_rpc::PeerInfo;
+use dsf_rpc::{PeerInfo, ServiceInfo};
 
 use std::time::SystemTime;
 
@@ -144,6 +169,35 @@ fn print_peers(peers: &[(Id, PeerInfo)]) {
             format!("{}", p.sent),
             format!("{}", p.received),
             //format!("{}", p.blocked),
+        ]);
+    }
+
+    // Print the table to stdout
+    table.printstd();
+}
+
+fn print_services(services: &[ServiceInfo]) {
+    // Create the table
+    let mut table = Table::new();
+
+    table.set_format(*prettytable::format::consts::FORMAT_CLEAN);
+
+    // Add a row per time
+    table.add_row(row![b => "Service ID", "Index", "State", "Updated", "PublicKey", "PrivateKey", "SecretKey", "Subscribers", "Replicas"]);
+    
+    for s in services {
+        table.add_row(row![
+            s.id.to_string(),
+            s.index.to_string(),
+            s.state.to_string(),
+            s.last_updated.map(systemtime_to_humantime).unwrap_or( "Never".to_string() ),
+
+            s.public_key.to_string(),
+            s.private_key.as_ref().map(|_| "True".to_string()).unwrap_or("False".to_string()),
+            s.secret_key.as_ref().map(|_| "True".to_string()).unwrap_or("False".to_string()),
+
+            format!("{}", s.subscribers),
+            format!("{}", s.replicas),
         ]);
     }
 
