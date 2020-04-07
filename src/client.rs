@@ -251,7 +251,7 @@ impl Client {
     /// This returns a future that will resolve to the desired service or an error
     pub async fn locate(&mut self, id: &Id) -> Result<(ServiceHandle, LocateInfo), Error> {
         let options = LocateOptions{ id: id.clone() };
-        let req = RequestKind::Service(dsf_rpc::service::ServiceCommands::Search(options));
+        let req = RequestKind::Service(dsf_rpc::service::ServiceCommands::Locate(options));
         let id = id.clone();
 
         let resp = self.request(req).await?;

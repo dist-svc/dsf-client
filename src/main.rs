@@ -158,11 +158,12 @@ fn print_peers(peers: &[(Id, PeerInfo)]) {
     table.set_format(*prettytable::format::consts::FORMAT_CLEAN);
 
     // Add a row per time
-    table.add_row(row![b => "Peer ID", "State", "Address(es)", "Seen", "Sent", "Received", "Blocked"]);
+    table.add_row(row![b => "Peer ID", "Index", "State", "Address(es)", "Seen", "Sent", "Received", "Blocked"]);
     
     for (_id, p) in peers {
         table.add_row(row![
             p.id.to_string(),
+            p.index.to_string(),
             p.state.to_string(),
             format!("{}", p.address()),
             p.seen.map(systemtime_to_humantime).unwrap_or( "Never".to_string() ),
