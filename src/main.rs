@@ -119,8 +119,8 @@ fn main() -> Result<(), io::Error> {
 
 fn handle_response(resp: ResponseKind) {
     match resp {
-        ResponseKind::Created(info) => {
-            println!("Created service");
+        ResponseKind::Service(info) => {
+            println!("Created / Located service");
             print_services(&[info]);
         },
         ResponseKind::Services(services) => {

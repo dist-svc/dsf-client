@@ -13,6 +13,7 @@ pub enum Error {
     Remote(DsfError),
     None(()),
     UnrecognizedResult,
+    NoServiceFound,
     Unknown,
     Timeout,
     Socket,

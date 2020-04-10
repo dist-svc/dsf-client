@@ -203,6 +203,18 @@ impl Client {
             _ => Err(Error::UnrecognizedResult),
         }
     }
+
+    pub async fn info(&mut self, options: service::InfoOptions) -> Result<(ServiceHandle, ServiceInfo), Error> {
+        let req = RequestKind::Service(service::ServiceCommands::Info(options));
+        let resp = self.request(req).await?;
+
+        match resp {
+            ResponseKind::Service(info) => {
+                Ok((ServiceHandle::new(info.id.clone()), info))
+            },
+            _ => Err(Error::UnrecognizedResult),
+        }
+    }
 }
 
 //#[async_trait]
@@ -217,7 +229,7 @@ impl Client {
         let resp = self.request(req).await?;
 
         match resp {
-            ResponseKind::Created(info) => Ok(ServiceHandle::new(info.id.clone())),
+            ResponseKind::Service(info) => Ok(ServiceHandle::new(info.id.clone())),
             _ => Err(Error::UnrecognizedResult),
         }
     }
@@ -228,11 +240,7 @@ impl Client {
     //type Error = ();
 
     /// Register a service instance in the distributed database
-    pub async fn register(&mut self, service: &ServiceHandle, options: RegisterOptions) -> Result<dsf_rpc::service::RegisterInfo, Error> {
-        let options = dsf_rpc::service::RegisterCommand {
-            service: ServiceIdentifier::id(service.id),
-            options,
-        };
+    pub async fn register(&mut self, options: RegisterOptions) -> Result<dsf_rpc::service::RegisterInfo, Error> {
         let req = RequestKind::Service(dsf_rpc::service::ServiceCommands::Register(options));
         let resp = self.request(req).await?;
 
@@ -249,10 +257,9 @@ impl Client {
 
     /// Locate a service instance in the distributed database
     /// This returns a future that will resolve to the desired service or an error
-    pub async fn locate(&mut self, id: &Id) -> Result<(ServiceHandle, LocateInfo), Error> {
-        let options = LocateOptions{ id: id.clone() };
+    pub async fn locate(&mut self, options: LocateOptions) -> Result<(ServiceHandle, LocateInfo), Error> {
+        let id = options.id.clone();
         let req = RequestKind::Service(dsf_rpc::service::ServiceCommands::Locate(options));
-        let id = id.clone();
 
         let resp = self.request(req).await?;
 
@@ -271,14 +278,8 @@ impl Client {
     //type Error = Error;
 
     /// Publish data using an existing service
-    pub async fn publish(&mut self, s: &ServiceHandle, kind: Option<DataKind>, data: Option<&[u8]>) -> Result<PublishInfo, Error> {
-        let p = PublishOptions {
-            service: ServiceIdentifier::id(s.id),
-            kind: kind.map(|k| k.into() ),
-            data: data.map(|d| d.to_vec() ),
-            //data_file: None,
-        };
-        let req = RequestKind::Data(DataCommands::Publish(p));
+    pub async fn publish(&mut self, options: PublishOptions) -> Result<PublishInfo, Error> {
+        let req = RequestKind::Data(DataCommands::Publish(options));
         
         let resp = self.request(req).await?;
 
@@ -296,12 +297,9 @@ impl Client {
     //type Error = Error;
 
     /// Subscribe to data from a given service
-    pub async fn subscribe(&mut self, service: &ServiceHandle, options: SubscribeOptions)-> Result<impl Stream<Item=ResponseKind>, Error> {
+    pub async fn subscribe(&mut self, options: SubscribeOptions)-> Result<impl Stream<Item=ResponseKind>, Error> {
         
-        let req = RequestKind::Stream(dsf_rpc::StreamCommand{
-            service: ServiceIdentifier::id(service.id),
-            options,
-        });
+        let req = RequestKind::Service(ServiceCommands::Subscribe(options));
         
         let (resp, rx) = self.do_request(req).await?;
 
