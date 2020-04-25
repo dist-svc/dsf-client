@@ -21,7 +21,6 @@ use tracing::{Level, span};
 use dsf_rpc::*;
 use dsf_rpc::{Request as RpcRequest, Response as RpcResponse};
 
-use dsf_core::prelude::*;
 use dsf_core::api::*;
 
 use crate::error::Error;

@@ -53,6 +53,7 @@ struct Config {
 
 #[derive(StructOpt)]
 enum Commands {
+    /// Flattened enum for DSF requests
     #[structopt(flatten)]
     Request(RequestKind),
     
