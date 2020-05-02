@@ -8,9 +8,12 @@ cache:
 services:
 - docker
 
+env:
+  - RUSTC_WRAPPER=sccache
+
 jobs:
   include:
-  - env: TARGET=x86_64-unknown-linux-gnu OUTPUT=dsfc CARGO=cross
+  - env: TARGET=x86_64-unknown-linux-gnu OUTPUT=dsfc CARGO=cargo
     os: linux
   - env: TARGET=armv7-unknown-linux-gnueabihf OUTPUT=dsfc CARGO=cross
     os: linux
@@ -27,7 +30,7 @@ install:
 - cargo fetch
 - rustup target add $TARGET
 - rustup component add rustfmt
-- cargo install cross || true
+- cargo install cross sccache || true
 
 script:
 - $CARGO test
