@@ -38,8 +38,7 @@ version = "0.1.0"
 features = [ "serde" ]
 
 [dependencies.dsf-rpc]
-version = "*"
-path = "../dsf-rpc"
+version = "0.1.0"
 
 [dependencies.log]
 features = ["max_level_trace", "release_max_level_info"]
