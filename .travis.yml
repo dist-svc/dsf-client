@@ -19,6 +19,10 @@ jobs:
   - env: TARGET=i686-pc-windows-msvc OUTPUT=dsfc.exe CARGO=cargo
     os: windows
 
+  allow_failures:
+    - os: windows
+
+
 install:
 - cargo fetch
 - rustup target add $TARGET
@@ -28,13 +32,16 @@ install:
 script:
 - $CARGO test
 - $CARGO build --target $TARGET --release
+- if [[ $OS == 'linux' ]]; then cargo deb --no-build --target $TARGET; fi
 - tar -cvf target/dsfc-$TARGET-$TRAVIS_TAG.tgz -C target/$TARGET/release/ $OUTPUT
 
 deploy:
   provider: releases
   api_key:
     secure: iMVGOFmBet85mCox6jdo9VLzLbLfRKemW38E0cqH2MKO1FRxA/K9fsL4rI3QYlPL4nqySptQs2S5lcoE/uBEuLb/x3ex+8eqfAlok+WmolAkYp6e4XLEhvMxXChzD08HlTSrYCGSlbqn/L0gQEdjSq0QEk/CsJss8Zu3gIEa1A6BhQQi3Fb9EIt0pUgtAb7qUqpejKMsvFKJMThSpfBSs5iPzsanlFOMBFVidj5vJO84fUgXSElFKNhylS/u/r5aS5VdELCmBSbfO+fGySldDe9iYM16H1AnY8tL3PBmGm7nd7m6hqnQLMS7QibusVVZzRrkNVy/6Bqoof1d4p8MNaW2/fIWY18gn+h4TMv/UjNNF7BK0iV+SHCLXRCI8GZS/xyFC4F48GTt8FjC7DQLw1ldcuj9rzt5qCxclHZDrLA3u3jG2Nsl+FccwvZ7wX9h7BraXSz0uF5LoJGegwNWBUwMizdHVBbSjSxOJNY0u+Wb7/pw7e+5d8ARIQ2xxb7ecy68uNR81zTQiZfp6RgpQIQc1CdCWEZQqOPRdXI3hJpw1LJZiOZCyORgkEolT40+BKzHNzVJOyrJluycE4TOWkcjYxBn/wLgx8aiSi2keuudVz9GzeAxKVOfh5clm0hRw5AG+x1LhBTTetO3qabBK+u+I/6hhVhr+O8f3gM3Xn4=
-  file: "target/*.tgz"
+  file: 
+    - "target/*.tgz"
+    - "target/$TARGET/debian/*.deb"
   file_glob: true
   on:
     repo: dist-svc/dsf-client
