@@ -23,7 +23,7 @@ install:
 - cargo fetch
 - rustup target add $TARGET
 - rustup component add rustfmt
-- if [ "$TRAVIS_OS_NAME" == "linux"]; then cargo install cross || true; fi
+- cargo install cross || true
 
 script:
 - $CARGO test
