@@ -98,12 +98,31 @@ jobs:
         toolchain: nightly
         target:  ${{ matrix.target }}
         override: true
+        
+    - name: Configure cargo cache 
+      uses: actions/cache@v1
+      with:
+        key: cargo-${{ matrix.os }}-${{ matrix.target }}
+        path: ${{ env.HOME }}/.cargo"
+
+    - name: Configure target cache
+      uses: actions/cache@v1
+      with:
+        key: target-${{ matrix.os }}-${{ matrix.target }}
+        path: ./target
+    
     - uses: actions-rs/cargo@v1
       with:
         use-cross: ${{ matrix.use_cross }}
         command: build
-        args: --target ${{ matrix.target }}
-    outputs:
-      bin: target/${{ matrix.target }}/release/${{ matrix.output }}
+        args: --release --target ${{ matrix.target }}
+    
+    - name: Create archive
+      run: tar -cvf target/dsfc-${{ matrix.target }}.tgz -C target/${{ matrix.target }}/release/ ${{ matrix.output }}
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v1
+      with:
+        name: dsfc-${{ matrix.target }}.tgz
+        path: target/dsfc-${{ matrix.target }}.tgz
       
    
