@@ -1,4 +1,3 @@
-
 use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 
 use async_std::future::TimeoutError;
@@ -36,7 +35,6 @@ impl From<DsfError> for Error {
         Error::Remote(e)
     }
 }
-
 
 impl From<TimeoutError> for Error {
     fn from(_e: TimeoutError) -> Self {
