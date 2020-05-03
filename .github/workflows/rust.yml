@@ -1,21 +1,86 @@
-name: Rust
+name: Rust CI test / build / deploy
 
-on: [push]
+on:
+  push: []
+  pull_request:
+    branches: [ master ]
 
 jobs:
-  build:
-
+  check:
+    name: Check
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+          components: rustfmt, clippy
+      - uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+      - uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: -- -D warnings
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+    
+  build:
+    name: Build
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            output: dsfc
+            use_cross: false
+            experimental: false
+          - target: armv7-unknown-linux-gnueabihf 
+            os: ubuntu-latest
+            output: dsfc
+            use_cross: true
+            experimental: false
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            output: dsfc
+            use_cross: false
+            experimental: true
+          - target: i686-pc-windows-msvc
+            os: windows-latest
+            output: dsfc.exe
+            use_cross: false
+            experimental: true
 
     steps:
-    - uses: actions/checkout@v1
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
-    - name: Build docs
-      run: cargo doc --no-deps
-    - name: Publish docs
-      uses: crazy-max/ghaction-github-pages@v1.2.4
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
       with:
-        build_dir: target/doc
+        toolchain: nightly
+        target:  ${{ matrix.target }}
+        override: true
+    - uses: actions-rs/cargo@v1
+      with:
+        use-cross: ${{ matrix.use_cross }}
+        command: build
+        args: --target ${{ matrix.target }}
+    outputs:
+      bin: target/${{ matrix.target }}/release/${{ matrix.output }}
+      
+   
