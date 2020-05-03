@@ -62,7 +62,6 @@ impl Client {
             while let Some(msg) = internal_stream.next().await {
                 unix_sink.send(msg).await.unwrap();
             }
-            ()
         });
 
         // Create receiving task
@@ -73,7 +72,6 @@ impl Client {
             while let Some(Ok(resp)) = unix_stream.next().await {
                 Self::handle(&reqs, resp).await.unwrap();
             }
-            ()
         });
 
         Ok(Client {
