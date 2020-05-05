@@ -93,6 +93,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - run: |
+        echo ::set-env name=GIT_TAG::$(git describe --dirty=+)
+        
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: nightly
@@ -110,19 +113,40 @@ jobs:
       with:
         key: target-${{ matrix.os }}-${{ matrix.target }}
         path: ./target
+
+    - name: Install cargo-deb
+      if: startsWith(matrix.os,'ubuntu')
+      uses: actions-rs/install@v0.1
+      
+      with:
+        crate: cargo-deb
+        version: latest
     
-    - uses: actions-rs/cargo@v1
+    - name: Build release
+      uses: actions-rs/cargo@v1
       with:
         use-cross: ${{ matrix.use_cross }}
         command: build
         args: --release --target ${{ matrix.target }}
+
+    - name: Package deb archive
+      if: startsWith(matrix.os,'ubuntu')
+      run: cargo deb --no-build --target $TARGET
     
-    - name: Create archive
-      run: tar -cvf target/dsfc-${{ matrix.target }}.tgz -C target/${{ matrix.target }}/release/ ${{ matrix.output }}
-    - name: Upload artifacts
+    - name: Create tgz archive
+      run: tar -cvf target/dsfc-${{ matrix.target }}-${{ env.GIT_TAG }}.tgz -C target/${{ matrix.target }}/release/ ${{ matrix.output }}
+
+    - name: Upload tgz artifacts
       uses: actions/upload-artifact@v1
       with:
-        name: dsfc-${{ matrix.target }}.tgz
-        path: target/dsfc-${{ matrix.target }}.tgz
+        name: dsfc-${{ matrix.target }}-${{ env.GIT_TAG }}.tgz
+        path: target/dsfc-${{ matrix.target }}-${{ env.GIT_TAG }}.tgz
+
+    - name: Upload deb artifacts
+      if: startsWith(matrix.os,'ubuntu')
+      uses: actions/upload-artifact@v1
+      with:
+        name: dsfc-${{ matrix.target }}-${{ env.GIT_TAG }}.tgz
+        path: target/${{ matrix.target }}/debian/*.deb
       
    
