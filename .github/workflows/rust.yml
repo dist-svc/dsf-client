@@ -137,14 +137,14 @@ jobs:
       run: tar -cvf target/dsfc-${{ matrix.target }}-${{ env.GIT_TAG }}.tgz -C target/${{ matrix.target }}/release/ ${{ matrix.output }}
 
     - name: Upload tgz artifacts
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v2
       with:
         name: dsfc-${{ matrix.target }}-${{ env.GIT_TAG }}.tgz
         path: target/dsfc-${{ matrix.target }}-${{ env.GIT_TAG }}.tgz
 
     - name: Upload deb artifacts
       if: startsWith(matrix.os,'ubuntu')
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v2
       with:
         name: dsfc-${{ matrix.target }}-${{ env.GIT_TAG }}.tgz
         path: target/${{ matrix.target }}/debian/*.deb
