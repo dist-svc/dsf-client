@@ -146,7 +146,7 @@ jobs:
       if: startsWith(matrix.os,'ubuntu')
       uses: actions/upload-artifact@v2
       with:
-        name: dsfc-${{ matrix.target }}-${{ env.GIT_TAG }}.tgz
+        name: dsfc-${{ matrix.target }}-${{ env.GIT_TAG }}.deb
         path: target/${{ matrix.target }}/debian/*.deb
       
    
