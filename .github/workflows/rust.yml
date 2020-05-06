@@ -131,7 +131,7 @@ jobs:
 
     - name: Package deb archive
       if: startsWith(matrix.os,'ubuntu')
-      run: cargo deb --no-build --target ${{ matrix.target }}
+      run: cargo deb --no-build --no-strip --target ${{ matrix.target }}
     
     - name: Create tgz archive
       run: tar -cvf target/dsfc-${{ matrix.target }}-${{ env.GIT_TAG }}.tgz -C target/${{ matrix.target }}/release/ ${{ matrix.output }}
