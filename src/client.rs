@@ -84,7 +84,7 @@ impl Client {
         })
     }
 
-    /// Issue a request using a client instance
+    /// Issue a request to the daemon using a client instance, returning a response
     // TODO: #[instrument] when futures 0.3 support is viable
     pub async fn request(&mut self, rk: RequestKind) -> Result<ResponseKind, Error> {
         let span = span!(Level::DEBUG, "client", "{}", self.addr);
@@ -201,7 +201,7 @@ impl Client {
         }
     }
 
-    /// Search for a peer using the database
+    /// List known services
     pub async fn list(
         &mut self,
         options: service::ListOptions,
@@ -215,6 +215,7 @@ impl Client {
         }
     }
 
+    /// Fetch information for a given service
     pub async fn info(
         &mut self,
         options: service::InfoOptions,
@@ -227,12 +228,6 @@ impl Client {
             _ => Err(Error::UnrecognizedResult),
         }
     }
-}
-
-//#[async_trait]
-impl Client {
-    //type Options = dsf_rpc::service::CreateOptions;
-    //type Error = Error;
 
     /// Create a new service with the provided options
     /// This MUST be stored locally for reuse
@@ -248,11 +243,6 @@ impl Client {
             _ => Err(Error::UnrecognizedResult),
         }
     }
-}
-
-//#[async_trait]
-impl Client {
-    //type Error = ();
 
     /// Register a service instance in the distributed database
     pub async fn register(
@@ -267,11 +257,6 @@ impl Client {
             _ => Err(Error::UnrecognizedResult),
         }
     }
-}
-
-//#[async_trait]
-impl Client {
-    //type Error = Error;
 
     /// Locate a service instance in the distributed database
     /// This returns a future that will resolve to the desired service or an error
@@ -292,11 +277,6 @@ impl Client {
             _ => Err(Error::UnrecognizedResult),
         }
     }
-}
-
-//#[async_trait]
-impl Client {
-    //type Error = Error;
 
     /// Publish data using an existing service
     pub async fn publish(&mut self, options: PublishOptions) -> Result<PublishInfo, Error> {
@@ -309,13 +289,6 @@ impl Client {
             _ => Err(Error::UnrecognizedResult),
         }
     }
-}
-
-//#[async_trait]
-impl Client {
-    //type Options = SubscribeOptions;
-    //type Data = ResponseKind;
-    //type Error = Error;
 
     /// Subscribe to data from a given service
     pub async fn subscribe(
@@ -326,10 +299,23 @@ impl Client {
 
         let (resp, rx) = self.do_request(req).await?;
 
-        //let rx: Box<dyn Stream<Item=ResponseKind>> = Box::new(rx);
-
         match resp {
             ResponseKind::Subscribed(_info) => Ok(rx),
+            _ => Err(Error::UnrecognizedResult),
+        }
+    }
+
+    /// Fetch data from a given service
+    pub async fn data(
+        &mut self,
+        options: data::ListOptions,
+    ) -> Result<Vec<DataInfo>, Error> {
+        let req = RequestKind::Data(DataCommands::List(options));
+
+        let resp = self.request(req).await?;
+
+        match resp {
+            ResponseKind::Data(info) => Ok(info),
             _ => Err(Error::UnrecognizedResult),
         }
     }
