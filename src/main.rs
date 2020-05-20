@@ -17,14 +17,12 @@ use simplelog::{LevelFilter, TermLogger};
 extern crate dsf_core;
 
 extern crate dsf_client;
-use dsf_client::Client;
+use dsf_client::{Client, Options};
 
 extern crate dsf_rpc;
 use dsf_rpc::{RequestKind, ResponseKind};
 
 extern crate humantime;
-use humantime::Duration;
-
 extern crate chrono;
 extern crate chrono_humanize;
 
@@ -41,21 +39,12 @@ struct Config {
     #[structopt(subcommand)]
     cmd: Commands,
 
-    #[structopt(
-        short = "d",
-        long = "daemon-socket",
-        default_value = "/tmp/dsf.sock",
-        env = "DSF_SOCK"
-    )]
-    /// Specify the socket to bind the DSF daemon
-    daemon_socket: String,
+    #[structopt(flatten)]
+    options: Options,
 
     #[structopt(long = "log-level", default_value = "info")]
     /// Enable verbose logging
     level: LevelFilter,
-
-    #[structopt(long, default_value = "3s")]
-    timeout: Duration,
 }
 
 #[derive(StructOpt)]
@@ -99,13 +88,13 @@ fn main() -> Result<(), io::Error> {
 
     task::block_on(async {
         // Create client connector
-        debug!("Connecting to client socket: '{}'", &opts.daemon_socket);
-        let mut c = match Client::new(&opts.daemon_socket, *opts.timeout) {
+        debug!("Connecting to client socket: '{}'", &opts.options.daemon_socket);
+        let mut c = match Client::new(&opts.options) {
             Ok(c) => c,
             Err(e) => {
                 error!(
                     "Error connecting to daemon on '{}': {:?}",
-                    &opts.daemon_socket, e
+                    &opts.options.daemon_socket, e
                 );
                 return;
             }

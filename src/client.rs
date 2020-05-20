@@ -13,7 +13,8 @@ use async_std::future::timeout;
 use async_std::os::unix::net::UnixStream;
 use async_std::task::{self, JoinHandle};
 
-//use async_trait::async_trait;
+use structopt::StructOpt;
+use humantime::{Duration as HumanDuration};
 
 use tracing::{span, Level};
 
@@ -25,6 +26,22 @@ use dsf_core::api::*;
 use crate::error::Error;
 
 type RequestMap = Arc<Mutex<HashMap<u64, mpsc::Sender<ResponseKind>>>>;
+
+/// Options for client instantiation
+#[derive(Clone, Debug, StructOpt)]
+pub struct Options {
+    #[structopt(
+        short = "d",
+        long = "daemon-socket",
+        default_value = "/var/run/dsfd/dsf.sock",
+        env = "DSF_SOCK"
+    )]
+    /// Specify the socket to bind the DSF daemon
+    pub daemon_socket: String,
+
+    #[structopt(long, default_value = "3s")]
+    pub timeout: HumanDuration,
+}
 
 #[derive(Debug)]
 pub struct Client {
@@ -40,14 +57,14 @@ pub struct Client {
 
 impl Client {
     /// Create a new client
-    pub fn new(addr: &str, timeout: Duration) -> Result<Self, Error> {
-        let span = span!(Level::DEBUG, "client", "{}", addr);
+    pub fn new(options: &Options) -> Result<Self, Error> {
+        let span = span!(Level::DEBUG, "client", "{}", options.daemon_socket);
         let _enter = span.enter();
 
-        info!("Client connecting (address: {})", addr);
+        info!("Client connecting (address: {})", options.daemon_socket);
 
         // Connect to stream
-        let stream = StdUnixStream::connect(addr)?;
+        let stream = StdUnixStream::connect(&options.daemon_socket)?;
         let stream = UnixStream::from(stream);
 
         // Build codec and split
@@ -76,9 +93,9 @@ impl Client {
 
         Ok(Client {
             sink: internal_sink,
-            addr: addr.to_owned(),
+            addr: options.daemon_socket.to_owned(),
             requests,
-            timeout,
+            timeout: *options.timeout,
             rx_handle,
             tx_handle,
         })
@@ -306,10 +323,7 @@ impl Client {
     }
 
     /// Fetch data from a given service
-    pub async fn data(
-        &mut self,
-        options: data::ListOptions,
-    ) -> Result<Vec<DataInfo>, Error> {
+    pub async fn data(&mut self, options: data::ListOptions) -> Result<Vec<DataInfo>, Error> {
         let req = RequestKind::Data(DataCommands::List(options));
 
         let resp = self.request(req).await?;

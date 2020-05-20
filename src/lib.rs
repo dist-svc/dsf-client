@@ -4,6 +4,7 @@ extern crate colored;
 extern crate futures;
 extern crate futures_codec;
 extern crate serde_json;
+extern crate humantime;
 
 #[macro_use]
 extern crate tracing;
@@ -13,7 +14,7 @@ pub extern crate dsf_core;
 pub extern crate dsf_rpc;
 
 pub mod client;
-pub use client::Client;
+pub use client::{Client, Options};
 
 pub mod error;
 pub use error::Error;
