@@ -43,6 +43,15 @@ pub struct Options {
     pub timeout: HumanDuration,
 }
 
+impl Options {
+    pub fn new(address: &str, timeout: Duration) -> Self {
+        Self{
+            daemon_socket: address.to_string(),
+            timeout: timeout.into(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Client {
     addr: String,
