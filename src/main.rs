@@ -22,9 +22,9 @@ use dsf_client::{Client, Options};
 extern crate dsf_rpc;
 use dsf_rpc::{RequestKind, ResponseKind};
 
-extern crate humantime;
 extern crate chrono;
 extern crate chrono_humanize;
+extern crate humantime;
 
 #[macro_use]
 extern crate prettytable;
@@ -88,7 +88,10 @@ fn main() -> Result<(), io::Error> {
 
     task::block_on(async {
         // Create client connector
-        debug!("Connecting to client socket: '{}'", &opts.options.daemon_socket);
+        debug!(
+            "Connecting to client socket: '{}'",
+            &opts.options.daemon_socket
+        );
         let mut c = match Client::new(&opts.options) {
             Ok(c) => c,
             Err(e) => {

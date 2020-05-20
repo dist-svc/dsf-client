@@ -3,8 +3,8 @@ extern crate async_trait;
 extern crate colored;
 extern crate futures;
 extern crate futures_codec;
-extern crate serde_json;
 extern crate humantime;
+extern crate serde_json;
 
 #[macro_use]
 extern crate tracing;

@@ -13,8 +13,8 @@ use async_std::future::timeout;
 use async_std::os::unix::net::UnixStream;
 use async_std::task::{self, JoinHandle};
 
+use humantime::Duration as HumanDuration;
 use structopt::StructOpt;
-use humantime::{Duration as HumanDuration};
 
 use tracing::{span, Level};
 
