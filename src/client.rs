@@ -45,7 +45,7 @@ pub struct Options {
 
 impl Options {
     pub fn new(address: &str, timeout: Duration) -> Self {
-        Self{
+        Self {
             daemon_socket: address.to_string(),
             timeout: timeout.into(),
         }
