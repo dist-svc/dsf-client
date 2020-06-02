@@ -1,4 +1,5 @@
 use std::io;
+use std::net::SocketAddr;
 
 extern crate structopt;
 use structopt::clap::Shell;
@@ -167,7 +168,7 @@ fn print_peers(peers: &[(Id, PeerInfo)]) {
             p.id.to_string(),
             p.index.to_string(),
             p.state.to_string(),
-            format!("{}", p.address()),
+            format!("{}", SocketAddr::from(*p.address())),
             p.seen
                 .map(systemtime_to_humantime)
                 .unwrap_or("Never".to_string()),

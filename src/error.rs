@@ -1,7 +1,7 @@
 use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 
 use async_std::future::TimeoutError;
-use dsf_core::types::Error as DsfError;
+use dsf_core::error::Error as DsfError;
 
 use futures_codec::JsonCodecError as CodecError;
 

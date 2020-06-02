@@ -39,7 +39,7 @@ pub struct Options {
     /// Specify the socket to bind the DSF daemon
     pub daemon_socket: String,
 
-    #[structopt(long, default_value = "3s")]
+    #[structopt(long, default_value = "10s")]
     pub timeout: HumanDuration,
 }
 
