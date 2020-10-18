@@ -6,7 +6,7 @@ keywords = ["DSF"]
 authors = ["ryan <ryan@kurte.nz>"]
 license = "MPL-2.0"
 edition = "2018"
-version = "0.1.2"
+version = "0.1.3"
 
 [features]
 cli = [ "structopt", "simplelog", "humantime" ]
