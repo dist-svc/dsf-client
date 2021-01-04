@@ -171,6 +171,7 @@ impl Client {
     async fn handle(requests: &RequestMap, resp: RpcResponse) -> Result<(), Error> {
         // Find matching sender
         let id = resp.req_id();
+        
         trace!("receive request lock");
         let mut a = match requests.lock().unwrap().get_mut(&id) {
             Some(a) => a.clone(),
@@ -222,7 +223,7 @@ impl Client {
         let resp = self.request(req).await?;
 
         match resp {
-            ResponseKind::Peers(info) => Ok(info[0].1.clone()),
+            ResponseKind::Peer(info) => Ok(info.clone()),
             _ => Err(Error::UnrecognizedResult),
         }
     }
