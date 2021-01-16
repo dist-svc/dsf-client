@@ -213,6 +213,7 @@ impl Client {
 
         match resp {
             ResponseKind::Connected(info) => Ok(info),
+            ResponseKind::Error(e) => Err(Error::Remote(e)),
             _ => Err(Error::UnrecognizedResult),
         }
     }
@@ -224,6 +225,7 @@ impl Client {
 
         match resp {
             ResponseKind::Peer(info) => Ok(info.clone()),
+            ResponseKind::Error(e) => Err(Error::Remote(e)),
             _ => Err(Error::UnrecognizedResult),
         }
     }
@@ -238,6 +240,7 @@ impl Client {
 
         match resp {
             ResponseKind::Services(info) => Ok(info),
+            ResponseKind::Error(e) => Err(Error::Remote(e)),
             _ => Err(Error::UnrecognizedResult),
         }
     }
@@ -252,6 +255,7 @@ impl Client {
 
         match resp {
             ResponseKind::Service(info) => Ok((ServiceHandle::new(info.id.clone()), info)),
+            ResponseKind::Error(e) => Err(Error::Remote(e)),
             _ => Err(Error::UnrecognizedResult),
         }
     }
@@ -267,6 +271,7 @@ impl Client {
 
         match resp {
             ResponseKind::Service(info) => Ok(ServiceHandle::new(info.id.clone())),
+            ResponseKind::Error(e) => Err(Error::Remote(e)),
             _ => Err(Error::UnrecognizedResult),
         }
     }
@@ -281,6 +286,7 @@ impl Client {
 
         match resp {
             ResponseKind::Registered(info) => Ok(info),
+            ResponseKind::Error(e) => Err(Error::Remote(e)),
             _ => Err(Error::UnrecognizedResult),
         }
     }
@@ -301,6 +307,7 @@ impl Client {
                 let handle = ServiceHandle { id: id.clone() };
                 Ok((handle, info))
             }
+            ResponseKind::Error(e) => Err(Error::Remote(e)),
             _ => Err(Error::UnrecognizedResult),
         }
     }
@@ -313,6 +320,7 @@ impl Client {
 
         match resp {
             ResponseKind::Published(info) => Ok(info),
+            ResponseKind::Error(e) => Err(Error::Remote(e)),
             _ => Err(Error::UnrecognizedResult),
         }
     }
@@ -328,6 +336,7 @@ impl Client {
 
         match resp {
             ResponseKind::Subscribed(_info) => Ok(rx),
+            ResponseKind::Error(e) => Err(Error::Remote(e)),
             _ => Err(Error::UnrecognizedResult),
         }
     }
@@ -340,6 +349,7 @@ impl Client {
 
         match resp {
             ResponseKind::Data(info) => Ok(info),
+            ResponseKind::Error(e) => Err(Error::Remote(e)),
             _ => Err(Error::UnrecognizedResult),
         }
     }
