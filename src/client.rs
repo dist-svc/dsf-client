@@ -70,7 +70,7 @@ impl Client {
         let span = span!(Level::DEBUG, "client", "{}", options.daemon_socket);
         let _enter = span.enter();
 
-        info!("Client connecting (address: {})", options.daemon_socket);
+        debug!("Client connecting (address: {})", options.daemon_socket);
 
         // Connect to stream
         let stream = StdUnixStream::connect(&options.daemon_socket)?;

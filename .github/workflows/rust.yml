@@ -1,7 +1,9 @@
 name: Rust CI test / build / deploy
 
 on:
-  push: []
+  push:
+    branches: [ master ]
+    tags: [ 'v*' ]
   pull_request:
     branches: [ master ]
 
@@ -9,6 +11,8 @@ jobs:
   check:
     name: Check
     runs-on: ubuntu-latest
+    continue-on-error: true
+
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -17,17 +21,13 @@ jobs:
           override: true
           components: rustfmt, clippy
 
-      - name: Configure cargo cache
-        uses: actions/cache@v1
+      - name: Configure caching
+        uses: actions/cache@v2
         with:
-          key: cargo-check
-          path: ${{ env.HOME }}/.cargo"
-
-      - name: Configure target cache
-        uses: actions/cache@v1
-        with:
-          key: target-check
-          path: ./target
+          key: check
+          path: |
+            ${{ env.HOME }}/.cargo
+            ./target
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
@@ -44,17 +44,13 @@ jobs:
           toolchain: nightly
           override: true
 
-      - name: Configure cargo cache
-        uses: actions/cache@v1
+      - name: Configure caching
+        uses: actions/cache@v2
         with:
-          key: cargo-test
-          path: ${{ env.HOME }}/.cargo"
-
-      - name: Configure target cache
-        uses: actions/cache@v1
-        with:
-          key: target-test
-          path: ./target
+          key: test
+          path: |
+            ${{ env.HOME }}/.cargo
+            ./target
 
       - uses: actions-rs/cargo@v1
         with:
@@ -64,6 +60,12 @@ jobs:
     name: Build
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.experimental }}
+    env:
+      ACCESS_KEY:  ${{ secrets.ACCESS_KEY }}
+      SECRET_KEY:  ${{ secrets.SECRET_KEY }}
+      S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+      S3_REGION:   ${{ secrets.S3_REGION }}
+      S3_BUCKET:   ${{ secrets.S3_BUCKET }}
     
     strategy:
       fail-fast: false
@@ -79,6 +81,10 @@ jobs:
             output: dsfc
             use_cross: true
             experimental: false
+          - target: armv7-unknown-linux-musleabihf
+            os: ubuntu-latest
+            output: dsfd
+            use_cross: true
           - target: x86_64-apple-darwin
             os: macos-latest
             output: dsfc
@@ -87,8 +93,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - run: |
-        echo ::set-env name=GIT_TAG::$(git describe --dirty=+)
+    - uses: FranzDiebold/github-env-vars-action@v2
         
     - uses: actions-rs/toolchain@v1
       with:
@@ -96,25 +101,32 @@ jobs:
         target:  ${{ matrix.target }}
         override: true
         
-    - name: Configure cargo cache 
-      uses: actions/cache@v1
-      with:
-        key: cargo-${{ matrix.os }}-${{ matrix.target }}
-        path: ${{ env.HOME }}/.cargo"
-
-    - name: Configure target cache
-      uses: actions/cache@v1
-      with:
-        key: target-${{ matrix.os }}-${{ matrix.target }}
-        path: ./target
-
     - name: Install cargo-deb
-      if: startsWith(matrix.os,'ubuntu')
+      if: ${{ matrix.os == 'ubuntu-latest' }}
       uses: actions-rs/install@v0.1
-      
       with:
         crate: cargo-deb
         version: latest
+
+    - name: Install s3-util
+      uses: actions-rs/install@v0.1
+      with:
+        crate: s3-util
+        version: latest
+    
+    - name: Configure caching
+      uses: actions/cache@v2
+      if: ${{ matrix.os != 'macos-latest' }}
+      with:
+        key: build-${{ matrix.os }}-${{ matrix.target }}
+        path: |
+          ${{ env.HOME }}/.cargo
+          ./target
+    
+    - name: Enable cross compilation
+      if: ${{ matrix.use_cross }}
+      run: |
+        echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
     
     - name: Build release
       uses: actions-rs/cargo@v1
@@ -128,19 +140,31 @@ jobs:
       run: cargo deb --no-build --no-strip --target ${{ matrix.target }}
     
     - name: Create tgz archive
-      run: tar -cvf target/dsfc-${{ matrix.target }}-${{ env.GIT_TAG }}.tgz -C target/${{ matrix.target }}/release/ ${{ matrix.output }}
+      run: tar -cvf target/dsfc-${{ matrix.target }}.tgz -C target/${{ matrix.target }}/release/ ${{ matrix.output }}
 
-    - name: Upload tgz artifacts
+    - name: Store CI artifacts
       uses: actions/upload-artifact@v2
       with:
-        name: dsfc-${{ matrix.target }}-${{ env.GIT_TAG }}.tgz
-        path: target/dsfc-${{ matrix.target }}-${{ env.GIT_TAG }}.tgz
+        name: dsfd-${{ matrix.target }}
+        path: |
+          target/dsfc-${{ matrix.target }}.tgz
+          target/${{ matrix.target }}/debian/*.deb
 
-    - name: Upload deb artifacts
-      if: startsWith(matrix.os,'ubuntu')
-      uses: actions/upload-artifact@v2
-      with:
-        name: dsfc-${{ matrix.target }}-${{ env.GIT_TAG }}.deb
-        path: target/${{ matrix.target }}/debian/*.deb
+    - name: Upload binaries to S3
+      run: |
+        s3-util upload dsfc-${{ matrix.target }}-$CI_REF_NAME.tgz target/dsfc-${{ matrix.target }}.tgz
+
+    - name: Upload deb packages to S3
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+      run: |
+        s3-util upload dsfc-${{ matrix.target }}-$CI_REF_NAME.deb "target/${{ matrix.target }}/debian/*.deb"
       
-   
+    - name: Attach build assets to release
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        asset_name: dsfc-${{ matrix.target }}.tgz
+        file: target/dsfc-${{ matrix.target }}.tgz
+        tag: ${{ github.ref }}
+        overwrite: true

@@ -16,6 +16,8 @@ pub extern crate dsf_rpc;
 pub mod client;
 pub use client::{Client, Options};
 
+//pub mod net;
+
 pub mod error;
 pub use error::Error;
 
