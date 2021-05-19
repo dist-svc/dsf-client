@@ -37,6 +37,8 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    continue-on-error: true
+    
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -59,7 +61,7 @@ jobs:
   build:
     name: Build
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.experimental }}
+    continue-on-error: true
     env:
       ACCESS_KEY:  ${{ secrets.ACCESS_KEY }}
       SECRET_KEY:  ${{ secrets.SECRET_KEY }}
