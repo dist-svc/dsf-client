@@ -38,7 +38,7 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     continue-on-error: true
-    
+
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -85,7 +85,7 @@ jobs:
             experimental: false
           - target: armv7-unknown-linux-musleabihf
             os: ubuntu-latest
-            output: dsfd
+            output: dsfc
             use_cross: true
           - target: x86_64-apple-darwin
             os: macos-latest
@@ -147,7 +147,7 @@ jobs:
     - name: Store CI artifacts
       uses: actions/upload-artifact@v2
       with:
-        name: dsfd-${{ matrix.target }}
+        name: dsfc-${{ matrix.target }}
         path: |
           target/dsfc-${{ matrix.target }}.tgz
           target/${{ matrix.target }}/debian/*.deb
