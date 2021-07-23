@@ -75,7 +75,9 @@ fn main() -> Result<(), io::Error> {
     log_config.add_filter_ignore_str("tokio");
     let log_config = log_config.build();
 
-    let _ = TermLogger::init(opts.level, log_config, simplelog::TerminalMode::Mixed).unwrap();
+    if let Err(_) = TermLogger::init(opts.level, log_config.clone(), simplelog::TerminalMode::Mixed) {
+        let _ = simplelog::SimpleLogger::init(opts.level, log_config);
+    }
 
     // Parse out commands
     let cmd = match &opts.cmd {
