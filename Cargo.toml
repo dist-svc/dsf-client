@@ -15,7 +15,7 @@ default = [ "cli" ]
 # Debian package configuration (for cargo-deb)
 [package.metadata.deb]
 priority = "optional"
-depends = "$auto, openssl"
+depends = "libc6,openssl"
 assets = [
     ["target/release/dsfc", "/usr/bin/dsfc", "0755"],
 ]
