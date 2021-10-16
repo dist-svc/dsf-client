@@ -21,6 +21,7 @@ use tracing::{span, Level};
 use dsf_rpc::*;
 use dsf_rpc::{Request as RpcRequest, Response as RpcResponse};
 
+use dsf_core::prelude::*;
 use dsf_core::api::*;
 
 use crate::error::Error;
@@ -255,6 +256,19 @@ impl Client {
 
         match resp {
             ResponseKind::Service(info) => Ok((ServiceHandle::new(info.id.clone()), info)),
+            ResponseKind::Error(e) => Err(Error::Remote(e)),
+            _ => Err(Error::UnrecognizedResult),
+        }
+    }
+
+    /// Fetch pages from a given service
+    pub async fn page(&mut self, options: page::FetchOptions) -> Result<Page, Error> {
+        let req = RequestKind::Page(PageCommands::Fetch(options));
+
+        let resp = self.request(req).await?;
+
+        match resp {
+            ResponseKind::Page(page) => Ok(page),
             ResponseKind::Error(e) => Err(Error::Remote(e)),
             _ => Err(Error::UnrecognizedResult),
         }
