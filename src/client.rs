@@ -61,8 +61,8 @@ pub struct Client {
 
     timeout: Duration,
 
-    tx_handle: JoinHandle<()>,
-    rx_handle: JoinHandle<()>,
+    _tx_handle: JoinHandle<()>,
+    _rx_handle: JoinHandle<()>,
 }
 
 impl Client {
@@ -106,8 +106,8 @@ impl Client {
             addr: options.daemon_socket.to_owned(),
             requests,
             timeout: *options.timeout,
-            rx_handle,
-            tx_handle,
+            _rx_handle: rx_handle,
+            _tx_handle: tx_handle,
         })
     }
 
