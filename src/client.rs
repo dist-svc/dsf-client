@@ -3,6 +3,7 @@ use std::os::unix::net::UnixStream as StdUnixStream;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use dsf_core::wire::Container;
 use futures::channel::mpsc;
 use futures::prelude::*;
 use futures::{SinkExt, StreamExt};
@@ -262,7 +263,7 @@ impl Client {
     }
 
     /// Fetch pages from a given service
-    pub async fn page(&mut self, options: page::FetchOptions) -> Result<Page, Error> {
+    pub async fn page(&mut self, options: page::FetchOptions) -> Result<Container, Error> {
         let req = RequestKind::Page(PageCommands::Fetch(options));
 
         let resp = self.request(req).await?;
