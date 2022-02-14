@@ -368,4 +368,30 @@ impl Client {
             _ => Err(Error::UnrecognizedResult),
         }
     }
+
+    /// Register a service using the provided name service
+    pub async fn ns_register(&mut self, options: name::NsRegisterOptions) -> Result<name::NsRegisterInfo, Error> {
+        let req = RequestKind::Ns(NsCommands::Register(options));
+
+        let resp = self.request(req).await?;
+
+        match resp {
+            ResponseKind::Ns(info) => Ok(info),
+            ResponseKind::Error(e) => Err(Error::Remote(e)),
+            _ => Err(Error::UnrecognizedResult),
+        }
+    }
+
+    /// Search for a service using the provided name service
+    pub async fn ns_search(&mut self, options: name::NsSearchOptions) -> Result<Vec<Container>, Error> {
+        let req = RequestKind::Ns(NsCommands::Search(options));
+
+        let resp = self.request(req).await?;
+
+        match resp {
+            ResponseKind::Pages(info) => Ok(info),
+            ResponseKind::Error(e) => Err(Error::Remote(e)),
+            _ => Err(Error::UnrecognizedResult),
+        }
+    }
 }
