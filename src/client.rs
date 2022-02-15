@@ -97,8 +97,19 @@ impl Client {
         let reqs = requests.clone();
         let rx_handle = task::spawn(async move {
             trace!("started client rx listener");
-            while let Some(Ok(resp)) = unix_stream.next().await {
-                Self::handle(&reqs, resp).await.unwrap();
+            loop {
+                match unix_stream.next().await {
+                    Some(Ok(resp)) => Self::handle(&reqs, resp).await.unwrap(),
+                    Some(Err(e)) => {
+                        error!("Client rx channel error: {:?}", e);
+                        break;
+                    }
+                    None => {
+                        warn!("Client rx channel closed");
+                        break;
+                    }
+                }
+                
             }
         });
 
@@ -173,6 +184,8 @@ impl Client {
     async fn handle(requests: &RequestMap, resp: RpcResponse) -> Result<(), Error> {
         // Find matching sender
         let id = resp.req_id();
+
+        debug!("Response: {:?}", resp);
 
         trace!("receive request lock");
         let mut a = match requests.lock().unwrap().get_mut(&id) {
