@@ -75,7 +75,13 @@ fn main() -> Result<(), io::Error> {
     log_config.add_filter_ignore_str("tokio");
     let log_config = log_config.build();
 
-    if let Err(_) = TermLogger::init(opts.level, log_config.clone(), simplelog::TerminalMode::Mixed) {
+    if TermLogger::init(
+        opts.level,
+        log_config.clone(),
+        simplelog::TerminalMode::Mixed,
+    )
+    .is_err()
+    {
         let _ = simplelog::SimpleLogger::init(opts.level, log_config);
     }
 
@@ -84,7 +90,7 @@ fn main() -> Result<(), io::Error> {
         Commands::Request(r) => r,
         Commands::Completion { shell, dir } => {
             info!("Writing completions for {} to: {}", *shell, dir);
-            Config::clap().gen_completions("dsfc", *shell, &dir);
+            Config::clap().gen_completions("dsfc", *shell, dir);
             return Ok(());
         }
     };

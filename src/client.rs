@@ -22,7 +22,6 @@ use tracing::{span, Level};
 use dsf_rpc::*;
 use dsf_rpc::{Request as RpcRequest, Response as RpcResponse};
 
-use dsf_core::prelude::*;
 use dsf_core::api::*;
 
 use crate::error::Error;
@@ -109,7 +108,6 @@ impl Client {
                         break;
                     }
                 }
-                
             }
         });
 
@@ -239,7 +237,7 @@ impl Client {
         let resp = self.request(req).await?;
 
         match resp {
-            ResponseKind::Peer(info) => Ok(info.clone()),
+            ResponseKind::Peer(info) => Ok(info),
             ResponseKind::Error(e) => Err(Error::Remote(e)),
             _ => Err(Error::UnrecognizedResult),
         }
@@ -298,7 +296,7 @@ impl Client {
         let resp = self.request(req).await?;
 
         match resp {
-            ResponseKind::Service(info) => Ok(ServiceHandle::new(info.id.clone())),
+            ResponseKind::Service(info) => Ok(ServiceHandle::new(info.id)),
             ResponseKind::Error(e) => Err(Error::Remote(e)),
             _ => Err(Error::UnrecognizedResult),
         }
@@ -383,7 +381,10 @@ impl Client {
     }
 
     /// Register a service using the provided name service
-    pub async fn ns_register(&mut self, options: name::NsRegisterOptions) -> Result<name::NsRegisterInfo, Error> {
+    pub async fn ns_register(
+        &mut self,
+        options: name::NsRegisterOptions,
+    ) -> Result<name::NsRegisterInfo, Error> {
         let req = RequestKind::Ns(NsCommands::Register(options));
 
         let resp = self.request(req).await?;
@@ -396,7 +397,10 @@ impl Client {
     }
 
     /// Search for a service using the provided name service
-    pub async fn ns_search(&mut self, options: name::NsSearchOptions) -> Result<Vec<Container>, Error> {
+    pub async fn ns_search(
+        &mut self,
+        options: name::NsSearchOptions,
+    ) -> Result<Vec<Container>, Error> {
         let req = RequestKind::Ns(NsCommands::Search(options));
 
         let resp = self.request(req).await?;
