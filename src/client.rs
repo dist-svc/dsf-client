@@ -1,28 +1,26 @@
 use std::collections::HashMap;
-use std::os::unix::net::UnixStream as StdUnixStream;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use dsf_core::wire::Container;
 use futures::channel::mpsc;
 use futures::prelude::*;
 use futures::{SinkExt, StreamExt};
-
-use futures_codec::{Framed, JsonCodec};
-
-use async_std::future::timeout;
-use async_std::os::unix::net::UnixStream;
-use async_std::task::{self, JoinHandle};
-
 use humantime::Duration as HumanDuration;
+use log::{debug, error, trace, warn};
 use structopt::StructOpt;
-
+use tokio::select;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::UnixStream,
+    task::{self, JoinHandle},
+    time::timeout,
+};
 use tracing::{span, Level};
 
+use dsf_core::api::*;
+use dsf_core::wire::Container;
 use dsf_rpc::*;
 use dsf_rpc::{Request as RpcRequest, Response as RpcResponse};
-
-use dsf_core::api::*;
 
 use crate::error::Error;
 
@@ -61,48 +59,58 @@ pub struct Client {
 
     timeout: Duration,
 
-    _tx_handle: JoinHandle<()>,
     _rx_handle: JoinHandle<()>,
+    _stream_handle: JoinHandle<()>,
 }
 
 impl Client {
     /// Create a new client
-    pub fn new(options: &Options) -> Result<Self, Error> {
+    pub async fn new(options: &Options) -> Result<Self, Error> {
         let span = span!(Level::DEBUG, "client", "{}", options.daemon_socket);
         let _enter = span.enter();
 
         debug!("Client connecting (address: {})", options.daemon_socket);
 
         // Connect to stream
-        let stream = StdUnixStream::connect(&options.daemon_socket)?;
-        let stream = UnixStream::from(stream);
+        let mut socket = UnixStream::connect(&options.daemon_socket).await?;
 
-        // Build codec and split
-        let codec = JsonCodec::<RpcRequest, RpcResponse>::new();
-        let framed = Framed::new(stream, codec);
-        let (mut unix_sink, mut unix_stream) = framed.split();
+        // Create internal streams
+        let (tx_sink, mut tx_stream) = mpsc::channel::<RpcRequest>(0);
+        let (mut rx_sink, mut rx_stream) = mpsc::channel::<RpcResponse>(0);
 
-        // Create sending task
-        let (internal_sink, mut internal_stream) = mpsc::channel::<RpcRequest>(0);
-        let tx_handle = task::spawn(async move {
-            trace!("started client tx listener");
-            while let Some(msg) = internal_stream.next().await {
-                unix_sink.send(msg).await.unwrap();
+        // Task to encode/decode messages on the unix socket
+        let stream_handle = task::spawn(async move {
+            trace!("started client io task");
+
+            let (mut unix_stream, mut unix_sink) = socket.split();
+            let mut buff = [0u8; 10 * 1024];
+
+            loop {
+                select! {
+                    // Read and decode incoming responses
+                    Ok(n) = unix_stream.read(&mut buff) => {
+                        if let Ok(req) = serde_json::from_slice(&buff[..n]) {
+                            rx_sink.send(req).await.unwrap();
+                        }
+                    },
+                    // Encode and write outgoing requests
+                    m = tx_stream.next() => {
+                        let v = serde_json::to_vec(&m).unwrap();
+                        unix_sink.write(&v).await.unwrap();
+                    }
+                }
             }
         });
 
         // Create receiving task
         let requests = Arc::new(Mutex::new(HashMap::new()));
         let reqs = requests.clone();
+
         let rx_handle = task::spawn(async move {
             trace!("started client rx listener");
             loop {
-                match unix_stream.next().await {
-                    Some(Ok(resp)) => Self::handle(&reqs, resp).await.unwrap(),
-                    Some(Err(e)) => {
-                        error!("Client rx channel error: {:?}", e);
-                        break;
-                    }
+                match rx_stream.next().await {
+                    Some(resp) => Self::handle(&reqs, resp).await.unwrap(),
                     None => {
                         warn!("Client rx channel closed");
                         break;
@@ -112,12 +120,12 @@ impl Client {
         });
 
         Ok(Client {
-            sink: internal_sink,
+            sink: tx_sink,
             addr: options.daemon_socket.to_owned(),
             requests,
             timeout: *options.timeout,
             _rx_handle: rx_handle,
-            _tx_handle: tx_handle,
+            _stream_handle: stream_handle,
         })
     }
 

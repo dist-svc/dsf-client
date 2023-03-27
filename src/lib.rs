@@ -1,17 +1,5 @@
-extern crate async_std;
-extern crate async_trait;
-extern crate colored;
-extern crate futures;
-extern crate futures_codec;
-extern crate humantime;
-extern crate serde_json;
-
-#[macro_use]
-extern crate tracing;
-extern crate tracing_futures;
-
-pub extern crate dsf_core;
-pub extern crate dsf_rpc;
+//! DSF Client Library and CLI, used to communicate with the DSF daemon
+//!
 
 pub mod client;
 pub use client::{Client, Options};

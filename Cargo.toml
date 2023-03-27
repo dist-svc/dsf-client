@@ -23,40 +23,28 @@ assets = [
 
 [dependencies]
 futures = "0.3.1"
-async-std = "1.3.0"
+tokio = { version = "1.26.0", features = [ "full", "net" ] }
+tokio-util = { version = "*", features = [ "compat", "codec" ] }
+tokio-serde = { version = "0.8.0", features = [ "json" ] }
 colored = "1.9.0"
 tracing = "0.1.10"
 tracing-futures = "0.2.0"
 async-trait = "0.1.21"
 serde_json = "1.0.44"
-
 prettytable-rs = "0.8.0"
 chrono-humanize = "0.0.11"
-
 serde = { version = "1.0", features = ["derive"] }
 chrono = { version = "0.4.10", features = ["serde"] }
-futures_codec = { version = "0.4.0", features = ["json"] }
-
 structopt = { version = "0.3.5", optional = true }
 simplelog = { version = "0.7.4", optional = true }
 humantime = { version = "2.0.0", optional = true }
-thiserror = { version = "*", optional = true }
+thiserror = { version = "1.0.0", optional = true }
+log = { version = "0.4.6", features = ["max_level_trace", "release_max_level_info"] }
+tui = { version = "0.9.0", features = [ "crossterm" ], default-features = false }
+anyhow = "*"
 
-[dependencies.dsf-core]
-version = "0.2.0"
-features = [ "serde", "std" ]
-
-[dependencies.dsf-rpc]
-version = "0.2.0"
-
-[dependencies.log]
-version = "0.4.6"
-features = ["max_level_trace", "release_max_level_info"]
-
-[dependencies.tui]
-version = "0.9.0"
-features = [ "crossterm" ]
-default-features = false
+dsf-core = { version = "0.2.0", features = [ "serde", "std" ] }
+dsf-rpc = { version = "0.2.0" }
 
 
 [[bin]]

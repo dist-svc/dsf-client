@@ -10,7 +10,7 @@ use futures::{Stream};
 
 use async_std::net::UdpSocket;
 use async_std::channel::{unbounded, Sender, Receiver};
-use async_std::task::{JoinHandle};
+use tokio::task::{JoinHandle};
 
 use log::{trace, debug, warn, error};
 

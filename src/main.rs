@@ -1,35 +1,14 @@
-use std::io;
 use std::net::SocketAddr;
+use std::time::SystemTime;
 
-extern crate structopt;
-use structopt::clap::Shell;
-use structopt::StructOpt;
-
-extern crate futures;
-
-extern crate async_std;
-use async_std::task;
-
-#[macro_use]
-extern crate log;
-extern crate simplelog;
+use log::{debug, error, info, warn};
+use prettytable::{cell, row, Table};
 use simplelog::{LevelFilter, TermLogger};
+use structopt::{clap::Shell, StructOpt};
 
-extern crate dsf_core;
-
-extern crate dsf_client;
 use dsf_client::{Client, Options};
-
-extern crate dsf_rpc;
-use dsf_rpc::{RequestKind, ResponseKind};
-
-extern crate chrono;
-extern crate chrono_humanize;
-extern crate humantime;
-
-#[macro_use]
-extern crate prettytable;
-use prettytable::Table;
+use dsf_core::types::Id;
+use dsf_rpc::{PeerInfo, RequestKind, ResponseKind, ServiceInfo};
 
 #[derive(StructOpt)]
 #[structopt(
@@ -66,7 +45,8 @@ enum Commands {
     },
 }
 
-fn main() -> Result<(), io::Error> {
+#[tokio::main]
+async fn main() -> Result<(), anyhow::Error> {
     // Fetch arguments
     let opts = Config::from_args();
 
@@ -95,41 +75,42 @@ fn main() -> Result<(), io::Error> {
         }
     };
 
-    task::block_on(async {
-        // Create client connector
-        debug!(
-            "Connecting to client socket: '{}'",
-            &opts.options.daemon_socket
-        );
-        let mut c = match Client::new(&opts.options) {
-            Ok(c) => c,
-            Err(e) => {
-                error!(
-                    "Error connecting to daemon on '{}': {:?}",
-                    &opts.options.daemon_socket, e
-                );
-                return;
-            }
-        };
-
-        // Execute request and handle response
-        let res = c.request(cmd.clone()).await;
-
-        match res {
-            Ok(resp) => {
-                handle_response(resp);
-            }
-            Err(e) => {
-                error!("error: {:?}", e);
-            }
+    // Create client connector
+    debug!(
+        "Connecting to client socket: '{}'",
+        &opts.options.daemon_socket
+    );
+    let mut c = match Client::new(&opts.options).await {
+        Ok(c) => c,
+        Err(e) => {
+            return Err(anyhow::anyhow!(
+                "Error connecting to daemon on '{}': {:?}",
+                &opts.options.daemon_socket,
+                e
+            ));
         }
-    });
+    };
+
+    // Execute request and handle response
+    let res = c.request(cmd.clone()).await;
+
+    match res {
+        Ok(resp) => {
+            handle_response(resp);
+        }
+        Err(e) => {
+            error!("error: {:?}", e);
+        }
+    }
 
     Ok(())
 }
 
 fn handle_response(resp: ResponseKind) {
     match resp {
+        ResponseKind::Status(status) => {
+            println!("Status: {:?}", status);
+        }
         ResponseKind::Service(info) => {
             println!("Created / Located service");
             print_services(&[info]);
@@ -152,17 +133,17 @@ fn handle_response(resp: ResponseKind) {
     }
 }
 
-use dsf_core::types::Id;
-use dsf_rpc::{PeerInfo, ServiceInfo};
-
-use std::time::SystemTime;
-
 fn systemtime_to_humantime(s: SystemTime) -> String {
     let v = chrono::DateTime::<chrono::Local>::from(s);
     chrono_humanize::HumanTime::from(v).to_string()
 }
 
 fn print_peers(peers: &[(Id, PeerInfo)]) {
+    if peers.len() == 0 {
+        warn!("No peers found");
+        return;
+    }
+
     // Create the table
     let mut table = Table::new();
 
@@ -191,6 +172,11 @@ fn print_peers(peers: &[(Id, PeerInfo)]) {
 }
 
 fn print_services(services: &[ServiceInfo]) {
+    if services.len() == 0 {
+        warn!("No services found");
+        return;
+    }
+
     // Create the table
     let mut table = Table::new();
 

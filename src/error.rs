@@ -1,17 +1,14 @@
 use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 
-use async_std::future::TimeoutError;
 use dsf_core::error::Error as DsfError;
-
-use futures_codec::JsonCodecError as CodecError;
 
 #[derive(Debug)]
 #[cfg_attr(feature = "thiserror", derive(thiserror::Error))]
 pub enum Error {
     #[cfg_attr(feature = "thiserror", error("io: {0:?}"))]
     Io(IoErrorKind),
-    #[cfg_attr(feature = "thiserror", error("codec: {0:?}"))]
-    Codec(CodecError),
+    #[cfg_attr(feature = "thiserror", error("codec"))]
+    Codec,
     #[cfg_attr(feature = "thiserror", error("remote: {0}"))]
     Remote(DsfError),
     #[cfg_attr(feature = "thiserror", error("no error?!"))]
@@ -36,6 +33,7 @@ impl From<IoError> for Error {
     }
 }
 
+#[cfg(nope)]
 impl From<CodecError> for Error {
     fn from(e: CodecError) -> Self {
         Error::Codec(e)
@@ -48,8 +46,8 @@ impl From<DsfError> for Error {
     }
 }
 
-impl From<TimeoutError> for Error {
-    fn from(_e: TimeoutError) -> Self {
+impl From<tokio::time::error::Error> for Error {
+    fn from(_e: tokio::time::error::Error) -> Self {
         Error::Timeout
     }
 }
